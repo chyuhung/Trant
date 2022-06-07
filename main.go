@@ -4,7 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	uuid "github.com/google/uuid"
+	"github.com/google/uuid"
 	"io/fs"
 	"io/ioutil"
 	"log"
@@ -58,8 +58,8 @@ func main() {
 		router.StaticFS("/static", http.FS(staticFiles))
 		router.POST("/api/v1/texts", TextsController)
 		router.NoRoute(func(context *gin.Context) {
-			path := context.Request.URL.Path
-			if strings.HasPrefix(path, "/static/") {
+			urlpath := context.Request.URL.Path
+			if strings.HasPrefix(urlpath, "/static/") {
 				reader, err := staticFiles.Open("index.html")
 				if err != nil {
 					log.Fatal(err)
