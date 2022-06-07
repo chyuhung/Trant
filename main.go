@@ -4,17 +4,51 @@ import (
 	"embed"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	uuid "github.com/google/uuid"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"strings"
 )
 
 //go:embed frontend/dist/*
 var FS embed.FS
+
+func TextsController(context *gin.Context) {
+	var json struct {
+		Raw string `json:"raw"`
+	}
+	if err := context.ShouldBindJSON(&json); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	} else {
+		exe, err := os.Executable()
+		if err != nil {
+			log.Fatal(err)
+		}
+		dir := filepath.Dir(exe)
+		if err != nil {
+			log.Fatal(err)
+		}
+		filename := uuid.New().String()
+		uploads := filepath.Join(dir, "uploads")
+		err = os.MkdirAll(uploads, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fullpath := path.Join("uploads", filename+".txt")
+		err = ioutil.WriteFile(filepath.Join(dir, fullpath), []byte(json.Raw), 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		context.JSON(http.StatusOK, gin.H{"url": "/" + fullpath})
+	}
+}
 
 func main() {
 	go func() {
@@ -22,6 +56,7 @@ func main() {
 		router := gin.Default()
 		staticFiles, _ := fs.Sub(FS, "frontend/dist")
 		router.StaticFS("/static", http.FS(staticFiles))
+		router.POST("/api/v1/texts", TextsController)
 		router.NoRoute(func(context *gin.Context) {
 			path := context.Request.URL.Path
 			if strings.HasPrefix(path, "/static/") {
