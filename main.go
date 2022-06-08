@@ -103,10 +103,39 @@ func QrcodesController(context *gin.Context) {
 
 }
 
+func FilesController(context *gin.Context) {
+	file, err := context.FormFile("raw")
+	if err != nil {
+		log.Fatal(err)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		log.Fatal(err)
+	}
+	dir := filepath.Dir(exe)
+	if err != nil {
+		log.Fatal(err)
+	}
+	filename := uuid.New().String()
+	uploads := filepath.Join(dir, "uploads")
+	err = os.MkdirAll(uploads, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fullpath := path.Join("uploads", filename+filepath.Ext(file.Filename))
+	fileErr := context.SaveUploadedFile(file, filepath.Join(dir, fullpath))
+	if fileErr != nil {
+		log.Fatal(fileErr)
+	}
+	context.JSON(http.StatusOK, gin.H{"url": "/" + fullpath})
+
+}
+
 //go:embed frontend/dist/*
 var FS embed.FS
 
 func main() {
+	port := "27149"
 	go func() {
 		gin.SetMode(gin.DebugMode) // 设置gin为debug模式
 		router := gin.Default()    // 创建一个gin引擎示例
@@ -116,6 +145,7 @@ func main() {
 		router.GET("/uploads/:path", UploadsController)
 		router.GET("/api/v1/addresses", AddressesController)
 		router.GET("/api/v1/qrcodes", QrcodesController)
+		router.POST("/api/v1/files", FilesController)
 		router.NoRoute(func(context *gin.Context) {
 			urlpath := context.Request.URL.Path
 			if strings.HasPrefix(urlpath, "/static/") {
@@ -133,7 +163,7 @@ func main() {
 				context.Status(http.StatusNotFound)
 			}
 		})
-		err := router.Run(":8080")
+		err := router.Run(":" + port)
 		if err != nil {
 			fmt.Println("Gin 启动失败，程序退出！")
 			fmt.Println(err)
@@ -141,7 +171,7 @@ func main() {
 		}
 	}()
 
-	url := "http://127.0.0.1:8080/static/index.html"
+	url := "http://127.0.0.1:" + port + "/static/index.html"
 	chromePath := "C:\\Program Files (x86)\\Microsoft\\EdgeCore\\102.0.1245.30\\msedge.exe"
 	cmd := exec.Command(chromePath, "--app="+url)
 	err := cmd.Start()
