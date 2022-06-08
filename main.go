@@ -10,10 +10,7 @@ import (
 
 func main() {
 	port := "27149"
-	//启动server
-	go func() {
-		server.Run()
-	}()
+	go server.Run()
 
 	url := "http://127.0.0.1:" + port + "/static/index.html"
 	chromePath := "C:\\Program Files (x86)\\Microsoft\\EdgeCore\\102.0.1245.30\\msedge.exe"
