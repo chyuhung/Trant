@@ -12,6 +12,10 @@ func main() {
 
 	go server.Run()
 	cmd := startBrowser()
+	signalHandler(cmd)
+
+}
+func signalHandler(cmd *exec.Cmd) {
 	chanSignal := make(chan os.Signal, 1)
 	signal.Notify(chanSignal, os.Interrupt)
 	// 监听中断信号
