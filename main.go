@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Trant/config"
 	"Trant/server"
 	"fmt"
 	"os"
@@ -9,35 +10,43 @@ import (
 )
 
 func main() {
-
+	chBrowerDead := make(chan struct{})
+	chServerDead := make(chan struct{})
 	go server.Run()
-	cmd := startBrowser()
-	signalHandler(cmd)
-
-}
-func signalHandler(cmd *exec.Cmd) {
-	chanSignal := make(chan os.Signal, 1)
-	signal.Notify(chanSignal, os.Interrupt)
-	// 监听中断信号
-	select {
-	case <-chanSignal:
-		err := cmd.Process.Kill()
-		if err != nil {
-			fmt.Println("浏览器关闭失败，请手动关闭！")
-			fmt.Println(err)
+	go startBrowser(chBrowerDead, chServerDead)
+	chSignal := listenInterrupt()
+	for {
+		select {
+		case <-chSignal:
+			chServerDead <- struct{}{}
+		case <-chBrowerDead:
+			os.Exit(0)
 		}
 	}
 }
 
-func startBrowser() *exec.Cmd {
-	port := "27149"
+func startBrowser(chChromeDead chan struct{}, chServerDead chan struct{}) {
+	port := config.GetPort()
 	url := "http://127.0.0.1:" + port + "/static/index.html"
-	chromePath := "C:\\Program Files (x86)\\Microsoft\\EdgeCore\\102.0.1245.30\\msedge.exe"
+	chromePath := "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
 	cmd := exec.Command(chromePath, "--app="+url)
 	err := cmd.Start()
 	if err != nil {
 		fmt.Println("浏览器启动失败，请手动访问：", url)
 		fmt.Println(err)
 	}
-	return cmd
+	go func() {
+		<-chServerDead
+		cmd.Process.Kill()
+	}()
+	go func() {
+		cmd.Wait()
+		chChromeDead <- struct{}{}
+	}()
+
+}
+func listenInterrupt() chan os.Signal {
+	chSignal := make(chan os.Signal)
+	signal.Notify(chSignal, os.Interrupt)
+	return chSignal
 }

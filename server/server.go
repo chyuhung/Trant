@@ -1,7 +1,9 @@
 package server
 
 import (
+	"Trant/config"
 	"Trant/server/controller"
+	"Trant/server/ws"
 	"embed"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -15,10 +17,10 @@ import (
 //go:embed frontend/dist/*
 var FS embed.FS
 
-// Run给main调用，首字母大写
 func Run() {
-	port := "27149"
-	//启动gin
+	port := config.GetPort()
+	hub := ws.NewHub()
+	go hub.Run()
 	gin.SetMode(gin.DebugMode) // 设置gin为debug模式
 	router := gin.Default()    // 创建一个gin引擎示例
 	staticFiles, _ := fs.Sub(FS, "frontend/dist")
@@ -28,6 +30,10 @@ func Run() {
 	router.GET("/api/v1/addresses", controller.AddressesController)
 	router.GET("/api/v1/qrcodes", controller.QrcodesController)
 	router.POST("/api/v1/files", controller.FilesController)
+
+	router.GET("/ws", func(context *gin.Context) {
+		ws.HttpController(context, hub)
+	})
 	router.NoRoute(func(context *gin.Context) {
 		urlpath := context.Request.URL.Path
 		if strings.HasPrefix(urlpath, "/static/") {
@@ -35,7 +41,12 @@ func Run() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			defer reader.Close()
+			defer func(reader fs.File) {
+				err := reader.Close()
+				if err != nil {
+
+				}
+			}(reader)
 			stat, err := reader.Stat()
 			if err != nil {
 				log.Fatal(err)
