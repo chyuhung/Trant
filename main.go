@@ -3,50 +3,49 @@ package main
 import (
 	"Trant/config"
 	"Trant/server"
-	"fmt"
+	"github.com/zserge/lorca"
+	"log"
 	"os"
-	"os/exec"
 	"os/signal"
+	"syscall"
 )
 
 func main() {
-	chBrowerDead := make(chan struct{})
-	chServerDead := make(chan struct{})
+	chBrowserExit := make(chan struct{})
+	chServerExit := make(chan struct{})
 	go server.Run()
-	go startBrowser(chBrowerDead, chServerDead)
-	chSignal := listenInterrupt()
+	go startBrowser(chBrowserExit, chServerExit)
+	chExit := listenInterrupt()
 	for {
 		select {
-		case <-chSignal:
-			chServerDead <- struct{}{}
-		case <-chBrowerDead:
+		case <-chExit:
+			chServerExit <- struct{}{}
+		case <-chBrowserExit:
 			os.Exit(0)
 		}
 	}
 }
 
-func startBrowser(chChromeDead chan struct{}, chServerDead chan struct{}) {
+func startBrowser(chBrowserExit chan struct{}, chServerExit chan struct{}) {
 	port := config.GetPort()
 	url := "http://127.0.0.1:" + port + "/static/index.html"
-	chromePath := "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
-	cmd := exec.Command(chromePath, "--app="+url)
-	err := cmd.Start()
+	ui, err := lorca.New(url, "", 600, 600)
 	if err != nil {
-		fmt.Println("浏览器启动失败，请手动访问：", url)
-		fmt.Println(err)
+		log.Fatal(err)
 	}
+
 	go func() {
-		<-chServerDead
-		cmd.Process.Kill()
+		<-chServerExit
+		ui.Close()
 	}()
 	go func() {
-		cmd.Wait()
-		chChromeDead <- struct{}{}
+		<-ui.Done()
+		chBrowserExit <- struct{}{}
 	}()
 
 }
 func listenInterrupt() chan os.Signal {
-	chSignal := make(chan os.Signal)
-	signal.Notify(chSignal, os.Interrupt)
-	return chSignal
+	exitChan := make(chan os.Signal)
+	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	return exitChan
 }
