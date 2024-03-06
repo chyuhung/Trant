@@ -6,12 +6,13 @@ import (
 	"Trant/server/ws"
 	"embed"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 //go:embed frontend/dist/*

@@ -3,11 +3,12 @@ package main
 import (
 	"Trant/config"
 	"Trant/server"
-	"github.com/zserge/lorca"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/zserge/lorca"
 )
 
 func main() {
@@ -45,7 +46,7 @@ func startBrowser(chBrowserExit chan struct{}, chServerExit chan struct{}) {
 
 }
 func listenInterrupt() chan os.Signal {
-	exitChan := make(chan os.Signal)
-	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	exitChan := make(chan os.Signal, 1)
+	signal.Notify(exitChan, os.Interrupt, syscall.SIGTERM)
 	return exitChan
 }
