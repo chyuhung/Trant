@@ -30,7 +30,7 @@ func main() {
 func startBrowser(chBrowserExit chan struct{}, chServerExit chan struct{}) {
 	port := config.GetPort()
 	url := "http://127.0.0.1:" + port + "/static/index.html"
-	ui, err := lorca.New(url, "", 600, 600)
+	ui, err := lorca.New(url, "", 600, 600, "--remote-allow-origins=*")
 	if err != nil {
 		log.Fatal(err)
 	}
